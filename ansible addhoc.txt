@@ -1,0 +1,332 @@
+                      
+                                            ----------Ansible---------- 
+
+   take three nodes ubuntu- 2nos    centos - 1nos
+      
+    Master  
+    Node-1
+    Node-2
+
+    # cat  /etc/os-release
+    # whoami
+    # sudo  su  -           ---> to switch root user
+
+ Step-1:  to change root password : in three nodes
+------------------------------------------------
+               node# passwd  root
+               Enter new passwd :  root
+
+ Step-2:  to configure ssh: in all nodes
+------------------------------------
+               node# vi /etc/ssh/sshd_config
+        [press 'i' for insert mode]
+	PermitRootLogin   yes
+	PasswordAuthentication   yes
+        [press 'Esc']
+        [:wq  ---> write and quit]
+
+
+ Step-3: to restart ssh service:
+ -----------------------------------------
+              node# service ssh restart         (for Ubuntu nodes)
+                                  [OR]
+              node# systemctl restart sshd   (for Redhat nodes)
+
+       
+ Step-4: to Connect with Nodes:
+----------------------------------------------
+              node# hostname  -i         (to get an IP-Address)
+             [OR]  # ifconfig      
+             [OR]  # ip  a       
+  
+              node# hostname  -f         (to get a Host Name / FQDN)
+
+              mstr#  ssh  <node1-IP>
+              mstr#  ssh  <node2-IP>
+
+
+
+                  Password less Authentication  (SSH-Keys)
+                 -------------------------------------------------------------
+ Step-1:  to generate a Key-pair
+------------------------------------------
+             mstr#  ls  -a          (to list hidden files)
+             mstr#  cd .ssh   
+             mstr#  ssh-keygen
+             mstr#  ls
+             id_rsa          (private key)
+             id_rsa.pub   (public key)
+
+ Step-2:  to send public key to nodes
+----------------------------------------------------
+          mstr#  ssh-copy-id   <node IP Address>
+
+ Step-3: to Connect with Nodes:
+----------------------------------------------
+              mstr#  ssh  <node IP>
+              mstr#  ssh  <node2 IP>
+
+
+
+   apt-get update
+   
+   apt-get install software-properties-common
+
+   apt-add-repository ppa:ansible/ansible
+
+   apt-ge install ansible
+
+   ansible -version
+
+
+
+   cd /etc/ansible   files [ hosts ansible.cfg roles]
+
+   vi hosts
+
+   [ubnt]
+   172.31.25.219
+   [cent]
+   172.31.24.237
+
+
+   vi ansible.cfg
+
+   depreciation_warnings=False  ----enter code
+   inventory      = /etc/ansible/hosts------remove #
+   ask_sudo_pass = True------remove #
+
+
+
+   ansible all --list-hosts  ---- list of ip's
+   ansible all -m ping----------test
+
+
+
+
+
+
+ADD-HOC Commands:-
+
+
+
+ansible cent -m raw -a 'mkdir /tmp/mydir'----> for create a directory
+
+ansible cent -m copy -a "src=/etc/hosts dest=/tmp/hosts" -> file transfer
+
+ansible cent -m yum -a "name=tomcat state=present"
+
+ansible cent -m yum -a "name=tomcat state=latest"-------------tomcat install
+  
+ansible all -m package -a "name=git-core state=latest"--------git installaton
+  
+ansible ubnt -m apt -a "name=apache2 state=latest"------------apache2 installation
+
+ansible ubnt -m service -a "name=apache2 state=started"--------apache2 service start
+
+
+ansible cent -m yum -a "name=httpd state=latest"--------------httpd (apache) instalation
+
+ansible cent -m systemd -a "name=httpd state=started'---service start
+
+ansible all -m service -a "name=httpd state=stopped"----service stop
+
+
+ansible cent -m systemd -a "name=tomcat state=started"----service start
+
+ansible cent -m file -a "name=/tmp/harsha state=directory"--------directory create
+
+
+ansible cent -m file -a "name=/tmp/harsha state=absent"----delete directory
+
+
+Playbooks :------------------------
+
+
+* Vi playbooks/pb1.yml -----------create txt file
+---
+- hosts: all
+  become: true
+  tasks:
+  - name: Create a file
+    file: path=/home/harees.txt state=touch
+
+
+
+*  vi playbooks/pb2.yml ----------convert file from .txt to Zip file
+ ---
+- hosts: all
+  become: true
+  tasks:
+  - name: Ansible zip file example
+    archive:
+     path: /home/harees.txt
+     dest: /home/harees.zip
+     format: zip
+
+
+
+root@ip-172-31-31-232:/etc/ansible/playbooks# cat pb1.yml
+
+---
+  hosts:all
+  become:true
+  tasks:.
+    -name:copy files
+
+  copy:.
+        src:/root/files/demmo.txt
+       dest:/tmp/demmo.txt
+       -name:to display msg
+
+  debug:.
+        msg:files copied for nodes!
+root@ip-172-31-31-232:/etc/ansible/playbooks# cat pb2
+cat: pb2: No such file or directory
+root@ip-172-31-31-232:/etc/ansible/playbooks# cat pb2.yml
+---
+ -  hosts:all
+  become:true
+  gather_facts:false
+  vars:.
+      - pack1:java
+      - pack2:tomcat
+
+  tasks:.
+      - name:to update repo
+
+  raw:yum update
+     - name:to install {{pack1}}
+     yum:name={{pack1}} state=present
+     - name:to install {{pack2}}
+     package:name= {{pack2}} state=present
+
+  notify:.
+        - name:start tomcat
+        - name:to deploy a file
+
+  copy:.
+       src:/root/files/sample.war
+       dest:/var/lib/tomcat/webapp/sample.war
+
+  handlers:.
+        - name:start tomcat
+        systemd:name={{pack2}} state=started
+root@ip-172-31-31-232:/etc/ansible/playbooks# cat pb3.yml
+ hosts: all
+  vars:
+    variable_to_be_replaced: 'Hello world'
+    inline_variable: 'hello again'
+  tasks:
+    - name: Ansible Template Example
+      template:
+        src:/root/ hello_world.j2
+        dest:/tmp/hello_world.j2
+root@ip-172-31-31-232:/etc/ansible/playbooks# pb4.yml
+pb4.yml: command not found
+root@ip-172-31-31-232:/etc/ansible/playbooks# cat pb4.yml
+
+---
+-hosts:all
+ become:true
+ tasks :
+        -copy:src=/root/files/har.txt dest=/tmp/
+        -command:touch/temo/demo_dir
+
+root@ip-172-31-31-232:/etc/ansible/playbooks# cat pb5.yml
+---
+- hosts: all
+  become: true
+  tasks:
+  - name: Create a file
+    file: path=/home/harees.txt state=touch
+
+root@ip-172-31-31-232:/etc/ansible/playbooks# cat pb6.yml
+---
+- hosts: all
+  become: true
+  tasks:
+  - name: Create a file
+    file: path=/home/harees.txt state=touch
+
+
+root@ip-172-31-31-232:/etc/ansible/playbooks# cat pb7.yml
+---
+- hosts: all
+  become: true
+  tasks:
+  - name: Ansible zip file example
+    archive:
+     path: /home/harees.txt
+     dest: /home/harees.zip
+     format: zip
+root@ip-172-31-31-232:/etc/ansible/playbooks# cat pb8.yml
+---
+- hosts: all
+  become: true
+  gather_facts: true
+  vars:
+   - pack1: mysql-client
+   - pack2: mariadb-server
+  tasks:
+   - name: to update repo
+     apt: update_cache=yes
+     when: ansible_distribution=='ubuntu'
+
+   - name: to update repo
+     yum: update_cache=yes
+     when: ansible_distribution=='centos'
+
+   - name: to install {{pack2}}
+     package: name= {{pack1}} state=present
+     when: ansible_pkg_mgr=='apt'
+
+   - name: to install {{pack2}}
+     package: name= {{pack2}} state=present
+     when: ansible_pkg_mgr=='yum'
+
+   - name: start {{pack2}}
+     service: name= {{pack1}} state=started
+     when: ansible_distribution=='ubuntu'
+
+   - name: start {{pack2}}
+     service: name= {{pack2}} state=started
+     when: ansible_distribution=='centos'
+
+root@ip-172-31-31-232:/etc/ansible/playbooks# cat pb9.yml
+---
+- hosts: all
+  become: true
+  tasks:
+   - name: to download package
+     get-url:
+         url: http://mirrors.estointernet.in/apache/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz
+         dest: /opt/apache-maven-3.6.3-bin.tar.gz
+         mode: 0777
+
+   - name: to excute modules
+     unarchive:
+         src: /opt/apache-maven-3.6.3-bin.tar.gz
+         dest: /opt/
+         rename_src: yes
+
+
+root@ip-172-31-31-232:/etc/ansible/playbooks# cat pb10.yml
+---
+- hosts: 172.31.24.237
+  become: true
+  vars:
+    - var1: Satthyatech
+    - var2: Devops
+  tasks:
+    - name: to install http
+      yum: name=httpd state=present
+    - name: to deploy a file
+      template:
+        src: /etc/ansible/templates/demo.j2
+        dest: /var/www/html/index.html
+    - name: to start service
+      systemd: name=httpd state=started
+
+
+
